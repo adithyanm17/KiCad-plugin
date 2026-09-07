@@ -27,10 +27,38 @@ from ..errors import BackendError, ValidationError
 from ..ir.types import Component, Design, Placement
 from ..ir.validate import validate
 from . import sexpr
-from .layers import BOARD_FILE_VERSIONS, LayerMap, flip_layer, for_version
+from .layers import (BOARD_FILE_VERSIONS, LayerMap, flip_layer, for_version,
+                     nets_by_name)
 from .sexpr import Sym
 
-__all__ = ["BoardWriter", "write_board", "BoardResult"]
+__all__ = ["BoardWriter", "write_board", "BoardResult", "resolve_version",
+           "DEFAULT_VERSION"]
+
+#: Used when no version is given and no KiCad installation can be found.
+#: KiCad 9 format is the safe middle ground: KiCad 10 opens and migrates it,
+#: and it stays readable by KiCad 9.
+DEFAULT_VERSION = "9.0"
+
+
+def resolve_version(version: str = "auto") -> str:
+    """Turn ``"auto"`` into a concrete board format version.
+
+    ``auto`` matches the installed KiCad, so a board opens natively rather
+    than prompting to migrate. With no KiCad present it falls back to
+    :data:`DEFAULT_VERSION`.
+    """
+    if version and version != "auto":
+        return version
+    try:
+        from ..fab.toolchain import find_toolchain
+        tool = find_toolchain()
+    except Exception:
+        return DEFAULT_VERSION
+    if not tool.available or not tool.version:
+        return DEFAULT_VERSION
+    major = tool.version.strip().split(".")[0]
+    candidate = "%s.0" % major
+    return candidate if candidate in BOARD_FILE_VERSIONS else DEFAULT_VERSION
 
 
 class BoardResult:
@@ -61,10 +89,60 @@ def _deep_copy(node):
     return node
 
 
+#: Project keys this library owns. Everything else in an existing .kicad_pro
+#: is preserved untouched.
+_OWNED_PROJECT_PATHS = (
+    ("board", "design_settings", "rules"),
+    ("board", "design_settings", "defaults"),
+    ("board", "design_settings", "track_widths"),
+    ("board", "design_settings", "via_dimensions"),
+    ("net_settings", "classes"),
+    ("net_settings", "netclass_patterns"),
+    ("meta", "filename"),
+)
+
+
+def _dig(data: dict, path: Sequence[str]):
+    node = data
+    for key in path:
+        if not isinstance(node, dict) or key not in node:
+            return None, False
+        node = node[key]
+    return node, True
+
+
+def _plant(data: dict, path: Sequence[str], value) -> None:
+    node = data
+    for key in path[:-1]:
+        nxt = node.get(key)
+        if not isinstance(nxt, dict):
+            nxt = {}
+            node[key] = nxt
+        node = nxt
+    node[path[-1]] = value
+
+
+def _merge_project(existing: dict, generated: dict) -> dict:
+    """Write our design settings into an existing project, keeping the rest.
+
+    A ``.kicad_pro`` carries far more than design rules -- KiCad 10 adds
+    component classes, tuning profiles and cvpcb state, and a user may have
+    their own settings in there. Replacing the file wholesale silently discards
+    all of it, so only the keys this library actually owns are overwritten.
+    """
+    merged = json.loads(json.dumps(existing))  # deep copy
+    for path in _OWNED_PROJECT_PATHS:
+        value, found = _dig(generated, path)
+        if found:
+            _plant(merged, path, value)
+    return merged
+
+
 class BoardWriter:
     """Turns a :class:`Design` into KiCad files."""
 
-    def __init__(self, design: Design, library, version: str = "9.0") -> None:
+    def __init__(self, design: Design, library, version: str = "auto") -> None:
+        version = resolve_version(version)
         if version not in BOARD_FILE_VERSIONS:
             raise BackendError(
                 "unsupported KiCad version %r -- use one of %s"
@@ -75,6 +153,7 @@ class BoardWriter:
         self.version = version
         self.file_version, _ = BOARD_FILE_VERSIONS[version]
         self.layers: LayerMap = for_version(version)
+        self.nets_by_name = nets_by_name(version)
         self.warnings: List[str] = []
         self._net_codes: Dict[str, int] = {}
 
@@ -345,7 +424,10 @@ class BoardWriter:
 
             code, name = self._net_of_pad(comp.ref, number)
             if code:
-                pad.append([Sym("net"), code, name])
+                # KiCad 10 writes the net name alone; earlier formats need the
+                # numeric code first.
+                pad.append([Sym("net"), name] if self.nets_by_name
+                           else [Sym("net"), code, name])
 
     # -- board geometry ---------------------------------------------------
 
@@ -392,10 +474,11 @@ class BoardWriter:
             pts = self.design.outline.points
 
         nc = self.design.rules.net_class("Default")
+        net_fields = ([[Sym("net"), net_name]] if self.nets_by_name
+                      else [[Sym("net"), code], [Sym("net_name"), net_name]])
         return [
             Sym("zone"),
-            [Sym("net"), code],
-            [Sym("net_name"), net_name],
+        ] + net_fields + [
             [Sym("layer"), layer],
             [Sym("hatch"), Sym("edge"), 0.5],
             [Sym("connect_pads"), [Sym("clearance"), round(nc.clearance_mm, 4)]],
@@ -443,8 +526,11 @@ class BoardWriter:
             [Sym("allow_soldermask_bridges_in_footprints"), Sym("no")],
         ])
 
-        for name, code in sorted(codes.items(), key=lambda kv: kv[1]):
-            board.append([Sym("net"), code, name])
+        # KiCad 10 has no numbered net table: nets come into being from the
+        # names on pads, zones and tracks.
+        if not self.nets_by_name:
+            for name, code in sorted(codes.items(), key=lambda kv: kv[1]):
+                board.append([Sym("net"), code, name])
 
         placed = 0
         for comp in d.components:
@@ -587,13 +673,17 @@ def write_board(
     design: Design,
     library,
     path: str,
-    version: str = "9.0",
+    version: str = "auto",
     ground_planes: bool = True,
     write_project: bool = True,
     check: bool = True,
     indent: int = 1,
 ) -> BoardResult:
     """Write ``design`` to ``path`` as a ``.kicad_pcb``.
+
+    ``version`` defaults to ``"auto"``, which matches the installed KiCad so
+    the board opens without a migration prompt; pass ``"8.0"``, ``"9.0"`` or
+    ``"10.0"`` to pin it.
 
     Raises :class:`~kicad_coder.errors.ValidationError` when the design has
     blocking problems, unless ``check`` is False.
@@ -628,8 +718,17 @@ def write_board(
 
     pro_path = path[: -len(".kicad_pcb")] + ".kicad_pro"
     if write_project:
+        generated = writer.project_dict(os.path.basename(pro_path))
+        existing = None
+        if os.path.isfile(pro_path):
+            try:
+                with open(pro_path, "r", encoding="utf-8") as fh:
+                    existing = json.load(fh)
+            except (OSError, ValueError):
+                existing = None  # unreadable: fall back to writing ours
+        merged = _merge_project(existing, generated) if existing else generated
         with open(pro_path, "w", encoding="utf-8") as fh:
-            json.dump(writer.project_dict(os.path.basename(pro_path)), fh, indent=2)
+            json.dump(merged, fh, indent=2)
     else:
         pro_path = ""
 

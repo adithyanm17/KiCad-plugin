@@ -306,7 +306,9 @@ def test_board_pad_nets_are_assigned():
             for pad in sexpr.find_all(fp, "pad"):
                 net = sexpr.find(pad, "net")
                 if net is not None:
-                    actual[sexpr.sexp_str(pad[1])] = sexpr.sexp_str(net[2])
+                    # (net "NAME") in KiCad 10, (net CODE "NAME") before it --
+                    # the name is last either way.
+                    actual[sexpr.sexp_str(pad[1])] = sexpr.sexp_str(net[-1])
             assert actual == expected, ref
 
 
@@ -352,11 +354,12 @@ def test_invalid_design_refuses_to_build():
     raise AssertionError("an invalid design was allowed to generate a board")
 
 
-def test_v8_and_v9_both_generate():
+def test_all_versions_generate():
     d = _demo_design()
     place(d, LIB, seed=1)
     with tempfile.TemporaryDirectory() as tmp:
-        for version, expected in (("8.0", 20240108), ("9.0", 20241229)):
+        for version, expected in (("8.0", 20240108), ("9.0", 20241229),
+                                  ("10.0", 20260206)):
             res = write_board(d, LIB, os.path.join(tmp, version + ".kicad_pcb"),
                               version=version)
             board = sexpr.parse(open(res.pcb_path, encoding="utf-8").read())
@@ -364,6 +367,92 @@ def test_v8_and_v9_both_generate():
             b_cu = [row for row in sexpr.find(board, "layers")[1:]
                     if row[1] == "B.Cu"][0]
             assert b_cu[0] == (31 if version == "8.0" else 2)
+
+
+def test_kicad10_writes_nets_by_name():
+    """KiCad 10 dropped the numbered net table; nets live on the items."""
+    d = _demo_design()
+    place(d, LIB, seed=1)
+    with tempfile.TemporaryDirectory() as tmp:
+        res = write_board(d, LIB, os.path.join(tmp, "b.kicad_pcb"),
+                          version="10.0")
+        board = sexpr.parse(open(res.pcb_path, encoding="utf-8").read())
+
+        assert sexpr.find_all(board, "net") == []
+
+        seen = {}
+        for fp in sexpr.find_all(board, "footprint"):
+            ref = next(p[2] for p in sexpr.find_all(fp, "property")
+                       if str(p[1]) == "Reference")
+            for pad in sexpr.find_all(fp, "pad"):
+                net = sexpr.find(pad, "net")
+                if net is None:
+                    continue
+                # exactly (net "NAME") -- no numeric code
+                assert len(net) == 2, sexpr.dumps(net)
+                assert isinstance(net[1], str) and not isinstance(net[1], Sym)
+                seen[(ref, sexpr.sexp_str(pad[1]))] = sexpr.sexp_str(net[1])
+
+        expected = {(r, p): n.name for n in d.nets for r, p in n.connections}
+        assert seen == expected
+
+        zone = sexpr.find(board, "zone")
+        assert sexpr.find(zone, "net_name") is None
+        assert len(sexpr.find(zone, "net")) == 2
+
+
+def test_pre10_versions_keep_numbered_nets():
+    d = _demo_design()
+    place(d, LIB, seed=1)
+    with tempfile.TemporaryDirectory() as tmp:
+        for version in ("8.0", "9.0"):
+            res = write_board(d, LIB, os.path.join(tmp, version + ".kicad_pcb"),
+                              version=version)
+            board = sexpr.parse(open(res.pcb_path, encoding="utf-8").read())
+            table = sexpr.find_all(board, "net")
+            assert len(table) == len(d.nets) + 1  # + the unconnected net 0
+            for fp in sexpr.find_all(board, "footprint"):
+                for pad in sexpr.find_all(fp, "pad"):
+                    net = sexpr.find(pad, "net")
+                    if net is not None:
+                        assert len(net) == 3 and isinstance(net[1], int)
+
+
+def test_auto_version_is_supported():
+    from kicad_coder.backends.board import (BOARD_FILE_VERSIONS,
+                                            DEFAULT_VERSION, resolve_version)
+    assert resolve_version("auto") in BOARD_FILE_VERSIONS
+    assert resolve_version("8.0") == "8.0"
+    assert DEFAULT_VERSION in BOARD_FILE_VERSIONS
+
+
+def test_project_merge_preserves_unknown_keys():
+    """Writing a board must not clobber settings we do not own."""
+    d = _demo_design()
+    place(d, LIB, seed=1)
+    with tempfile.TemporaryDirectory() as tmp:
+        pcb = os.path.join(tmp, "p.kicad_pcb")
+        pro = os.path.join(tmp, "p.kicad_pro")
+        with open(pro, "w", encoding="utf-8") as fh:
+            json.dump({
+                "tuning_profiles": [{"mine": True}],
+                "component_class_settings": {"sheets": []},
+                "cvpcb": {"equivalence_files": []},
+                "board": {"design_settings": {"drc_exclusions": ["keep-me"]}},
+                "net_settings": {"net_colors": {"GND": "red"}},
+            }, fh)
+
+        write_board(d, LIB, pcb)
+        after = json.load(open(pro, encoding="utf-8"))
+
+        assert after["tuning_profiles"] == [{"mine": True}]
+        assert after["component_class_settings"] == {"sheets": []}
+        assert after["cvpcb"] == {"equivalence_files": []}
+        assert after["board"]["design_settings"]["drc_exclusions"] == ["keep-me"]
+        assert after["net_settings"]["net_colors"] == {"GND": "red"}
+        # and our own settings did land
+        assert after["board"]["design_settings"]["rules"]["min_track_width"] ==             d.rules.min_track_mm
+        assert [c["name"] for c in after["net_settings"]["classes"]] ==             [nc.name for nc in d.rules.net_classes]
 
 
 # -- footprint library ----------------------------------------------------

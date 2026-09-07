@@ -85,7 +85,7 @@ def __getattr__(name):
     raise AttributeError("module %r has no attribute %r" % (__name__, name))
 
 
-def _build(design, library=None, path: str = "", version: str = "9.0",
+def _build(design, library=None, path: str = "", version: str = "auto",
            seed: int = 0, bom_path: str = ""):
     """Validate, place, write the board and optionally the BOM, in one call.
 

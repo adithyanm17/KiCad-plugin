@@ -128,7 +128,7 @@ class DesignSession:
         library: Optional[FootprintLibrary] = None,
         toolchain: Optional[Toolchain] = None,
         work_dir: str = "build",
-        kicad_version: str = "9.0",
+        kicad_version: str = "auto",
     ) -> None:
         self.design = design or Design()
         self.library = library or FootprintLibrary()
@@ -852,8 +852,10 @@ def build_tools() -> List[Tool]:
              _obj({
                  "path": _str("Output path. Defaults to <name>.kicad_pcb in "
                               "the work directory."),
-                 "kicad_version": _str("Target file format.",
-                                       ["8.0", "9.0"], "9.0"),
+                 "kicad_version": _str(
+                     "Target KiCad file format. 'auto' matches the installed "
+                     "KiCad so the board opens without a migration prompt.",
+                     ["auto", "8.0", "9.0", "10.0"], "auto"),
                  "ground_planes": _bool("Add a ground zone.", True),
              }),
              _h_generate_board),

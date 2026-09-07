@@ -176,9 +176,18 @@ FootprintLibrary(search_dirs=["/path/to/my-libs"])   # your own .pretty dirs
 
 ## File format notes
 
-Boards are written as S-expressions directly, targeting KiCad **9.0**
-(`20241229`) by default; pass `version="8.0"` for `20240108`. Two details that
-are easy to get wrong, both verified against the KiCad parser source:
+Boards are written as S-expressions directly. `version="auto"` (the default)
+matches the installed KiCad so the board opens without a migration prompt;
+pass `"8.0"`, `"9.0"` or `"10.0"` to pin it.
+
+| Target | Format | `B.Cu` | Nets |
+|---|---|---|---|
+| KiCad 8 | `20240108` | 31 | `(net 1 "GND")` + numbered table |
+| KiCad 9 | `20241229` | 2 | `(net 1 "GND")` + numbered table |
+| KiCad 10 | `20260206` | 2 | `(net "GND")`, **no net table** |
+
+Three details that are easy to get wrong, all verified against the KiCad
+parser source and against boards KiCad itself wrote:
 
 - **KiCad 9 renumbered the copper layers.** `B.Cu` is 2 in KiCad 9 and 31 in
   KiCad 8; inner layers are 4, 6, 8… versus 1, 2, 3…. The layer table must
@@ -186,6 +195,14 @@ are easy to get wrong, both verified against the KiCad parser source:
 - **Pad and text angles are board-frame absolute**, while pad *positions* stay
   in unrotated footprint-local coordinates. A footprint rotated by R writes
   each pad at `local_angle + R`.
+- **KiCad 10 dropped the numbered net table.** Nets now come into being from
+  the names on pads, zones and tracks: `(net "GND")` rather than
+  `(net 1 "GND")`. The parser still reads the old shape — its own comment
+  calls it "legacy files (pre-10.0)".
+
+An existing `.kicad_pro` is **merged**, not replaced: only the design rules and
+net classes this library owns are overwritten, so component classes, tuning
+profiles and your own settings survive a rebuild.
 
 Design rules and net classes go in the `.kicad_pro` project file, which is
 written alongside the board — KiCad 7+ reads them from there, so a board file

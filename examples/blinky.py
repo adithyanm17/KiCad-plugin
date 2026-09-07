@@ -92,7 +92,7 @@ def main() -> int:
     print(placement.summary())
     print()
 
-    board = write_board(design, lib, "build/blinky.kicad_pcb", version="9.0")
+    board = write_board(design, lib, "build/blinky.kicad_pcb")  # version="auto"
     print(board.summary())
     print()
 

@@ -14,13 +14,31 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple
 
-__all__ = ["LayerMap", "V8", "V9", "for_version", "BOARD_FILE_VERSIONS"]
+__all__ = ["LayerMap", "V8", "V9", "V10", "for_version",
+           "BOARD_FILE_VERSIONS", "nets_by_name"]
 
 #: board file format version -> (generator_version string, layer table key)
+#:
+#: Values are taken from boards the corresponding KiCad release writes:
+#: 20240108 from KiCad 8, 20241229 from KiCad 9, and 20260206 from the
+#: KiCad 10 board shipped in its own demos (pic_programmer).
 BOARD_FILE_VERSIONS: Dict[str, Tuple[int, str]] = {
     "8.0": (20240108, "8.0"),
     "9.0": (20241229, "9.0"),
+    "10.0": (20260206, "10.0"),
 }
+
+
+def nets_by_name(version: str) -> bool:
+    """True when nets are written by name only, with no numbered net table.
+
+    KiCad 10 dropped the top-level ``(net <code> "<name>")`` table: a pad now
+    carries ``(net "VCC")`` and the net is created from that name. The parser
+    still reads the old numbered form -- its own comment calls it "legacy
+    files (pre-10.0)" -- but writing the modern shape avoids a migration
+    prompt when the board is opened.
+    """
+    return version in ("10", "10.0")
 
 
 class LayerMap:
@@ -117,6 +135,9 @@ def _v9() -> LayerMap:
 
 V8 = _v8()
 V9 = _v9()
+#: KiCad 10 keeps KiCad 9's layer numbering; only the net encoding changed.
+V10 = _v9()
+V10.name = "10.0"
 
 
 def for_version(version: str) -> LayerMap:
@@ -124,8 +145,11 @@ def for_version(version: str) -> LayerMap:
         return V8
     if version in ("9", "9.0"):
         return V9
+    if version in ("10", "10.0"):
+        return V10
     raise ValueError(
-        "unsupported KiCad version %r -- use '8.0' or '9.0'" % (version,)
+        "unsupported KiCad version %r -- use '8.0', '9.0' or '10.0'"
+        % (version,)
     )
 
 

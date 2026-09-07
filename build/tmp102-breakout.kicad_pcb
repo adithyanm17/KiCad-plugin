@@ -1,7 +1,7 @@
 (kicad_pcb
- (version 20241229)
+ (version 20260206)
  (generator "kicad_coder")
- (generator_version "9.0")
+ (generator_version "10.0")
  (general
   (thickness 1.6)
   (legacy_teardrops no)
@@ -37,11 +37,6 @@
   (pad_to_mask_clearance 0)
   (allow_soldermask_bridges_in_footprints no)
  )
- (net 0 "")
- (net 1 "GND")
- (net 2 "+3V3")
- (net 3 "SDA")
- (net 4 "SCL")
  (footprint
   "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm"
   (layer "F.Cu")
@@ -297,7 +292,7 @@
    (size 1.95 0.6)
    (layers "F.Cu" "F.Mask" "F.Paste")
    (roundrect_rratio 0.25)
-   (net 3 "SDA")
+   (net "SDA")
   )
   (pad
    "2"
@@ -307,7 +302,7 @@
    (size 1.95 0.6)
    (layers "F.Cu" "F.Mask" "F.Paste")
    (roundrect_rratio 0.25)
-   (net 4 "SCL")
+   (net "SCL")
   )
   (pad
    "3"
@@ -326,7 +321,7 @@
    (size 1.95 0.6)
    (layers "F.Cu" "F.Mask" "F.Paste")
    (roundrect_rratio 0.25)
-   (net 1 "GND")
+   (net "GND")
   )
   (pad
    "5"
@@ -363,7 +358,7 @@
    (size 1.95 0.6)
    (layers "F.Cu" "F.Mask" "F.Paste")
    (roundrect_rratio 0.25)
-   (net 2 "+3V3")
+   (net "+3V3")
   )
   (embedded_fonts no)
   (model
@@ -510,7 +505,7 @@
    (size 0.9 0.95)
    (layers "F.Cu" "F.Mask" "F.Paste")
    (roundrect_rratio 0.25)
-   (net 2 "+3V3")
+   (net "+3V3")
   )
   (pad
    "2"
@@ -520,7 +515,7 @@
    (size 0.9 0.95)
    (layers "F.Cu" "F.Mask" "F.Paste")
    (roundrect_rratio 0.25)
-   (net 1 "GND")
+   (net "GND")
   )
   (embedded_fonts no)
   (model
@@ -667,7 +662,7 @@
    (size 1 1.45)
    (layers "F.Cu" "F.Mask" "F.Paste")
    (roundrect_rratio 0.25)
-   (net 2 "+3V3")
+   (net "+3V3")
   )
   (pad
    "2"
@@ -677,7 +672,7 @@
    (size 1 1.45)
    (layers "F.Cu" "F.Mask" "F.Paste")
    (roundrect_rratio 0.25)
-   (net 1 "GND")
+   (net "GND")
   )
   (embedded_fonts no)
   (model
@@ -824,7 +819,7 @@
    (size 0.8 0.95)
    (layers "F.Cu" "F.Mask" "F.Paste")
    (roundrect_rratio 0.25)
-   (net 2 "+3V3")
+   (net "+3V3")
   )
   (pad
    "2"
@@ -834,7 +829,7 @@
    (size 0.8 0.95)
    (layers "F.Cu" "F.Mask" "F.Paste")
    (roundrect_rratio 0.25)
-   (net 3 "SDA")
+   (net "SDA")
   )
   (embedded_fonts no)
   (model
@@ -981,7 +976,7 @@
    (size 0.8 0.95)
    (layers "F.Cu" "F.Mask" "F.Paste")
    (roundrect_rratio 0.25)
-   (net 2 "+3V3")
+   (net "+3V3")
   )
   (pad
    "2"
@@ -991,7 +986,7 @@
    (size 0.8 0.95)
    (layers "F.Cu" "F.Mask" "F.Paste")
    (roundrect_rratio 0.25)
-   (net 4 "SCL")
+   (net "SCL")
   )
   (embedded_fonts no)
   (model
@@ -1208,7 +1203,7 @@
    (drill 1)
    (layers "*.Cu" "*.Mask")
    (remove_unused_layers no)
-   (net 2 "+3V3")
+   (net "+3V3")
   )
   (pad
    "2"
@@ -1219,7 +1214,7 @@
    (drill 1)
    (layers "*.Cu" "*.Mask")
    (remove_unused_layers no)
-   (net 1 "GND")
+   (net "GND")
   )
   (pad
    "3"
@@ -1230,7 +1225,7 @@
    (drill 1)
    (layers "*.Cu" "*.Mask")
    (remove_unused_layers no)
-   (net 3 "SDA")
+   (net "SDA")
   )
   (pad
    "4"
@@ -1241,7 +1236,7 @@
    (drill 1)
    (layers "*.Cu" "*.Mask")
    (remove_unused_layers no)
-   (net 4 "SCL")
+   (net "SCL")
   )
   (embedded_fonts no)
   (model
@@ -1389,7 +1384,7 @@
    (at 0 0)
    (size 1.5 1.5)
    (layers "F.Cu" "F.Mask")
-   (net 2 "+3V3")
+   (net "+3V3")
   )
   (embedded_fonts no)
   (at 9.7 3.9)
@@ -1432,8 +1427,7 @@
   (layer "Edge.Cuts")
  )
  (zone
-  (net 1)
-  (net_name "GND")
+  (net "GND")
   (layer "B.Cu")
   (hatch edge 0.5)
   (connect_pads

@@ -227,7 +227,7 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("-o", "--output", default="")
     b.add_argument("--strategy", choices=["force", "grid"], default="force")
     b.add_argument("--seed", type=int, default=0)
-    b.add_argument("--kicad-version", choices=["8.0", "9.0"], default="9.0")
+    b.add_argument("--kicad-version", choices=["8.0", "9.0", "10.0", "auto"], default="auto")
     add_lib_args(b)
     b.set_defaults(func=cmd_build)
 
