@@ -1,0 +1,7 @@
+Item,Qty,References,Value,Footprint,MPN,Manufacturer,Description,DNP
+1,1,C1,100n,Capacitor_SMD:C_0603_1608Metric,CL10B104KB8NNNC,Samsung,"Decoupling capacitor, X7R 50V",
+2,1,C2,10u,Capacitor_SMD:C_0805_2012Metric,CL21A106KAYNNNE,Samsung,Bulk capacitor,
+3,1,D1,LED_RED,LED_SMD:LED_0603_1608Metric,150060RS75000,Wurth,,
+4,1,J1,PWR_IN,Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical,61300211121,Wurth,,
+5,1,R1,330,Resistor_SMD:R_0603_1608Metric,RC0603FR-07330RL,Yageo,"LED series resistor, 1%",
+6,1,U1,ATtiny85,Package_SO:SOIC-8_3.9x4.9mm_P1.27mm,ATTINY85-20SU,Microchip,"8-bit AVR MCU, 8KB flash",

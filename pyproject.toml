@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kicad-coder"
+version = "0.1.0"
+description = "Design, review and document PCBs from code or from a language model, with KiCad."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+keywords = ["kicad", "pcb", "eda", "electronics", "llm", "agent", "bom", "drc"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Manufacturing",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+]
+
+# Deliberately empty. The core runs on the standard library alone so it
+# imports cleanly inside KiCad's bundled Python, where pip is not available.
+dependencies = []
+
+[project.optional-dependencies]
+# Only needed to run examples/agent_loop.py against a hosted model.
+anthropic = ["anthropic>=0.40"]
+openai = ["openai>=1.40"]
+gemini = ["google-generativeai>=0.8"]
+dev = ["pytest>=7"]
+
+[project.scripts]
+kicad-coder = "kicad_coder.cli:main"
+
+[project.urls]
+Documentation = "https://github.com/your-org/kicad-coder#readme"
+
+[tool.setuptools]
+packages = [
+    "kicad_coder",
+    "kicad_coder.ir",
+    "kicad_coder.backends",
+    "kicad_coder.library",
+    "kicad_coder.place",
+    "kicad_coder.fab",
+    "kicad_coder.review",
+    "kicad_coder.llm",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
